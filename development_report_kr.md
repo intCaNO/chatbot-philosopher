@@ -119,7 +119,7 @@
 }
 ```
 
-
+  아래의 두 개의 코드는 각각 nltk.utils.py, 그리고 model.py이다. 이 파이썬 코드들은 사용자의 입력을 예측하고 분류하는데 필요한 nltk의 punkt 토크나이저(tokenizer) 시스템과 인공지능 커뮤니케이션 시스템의 기반이 되어줄 뉴런 시스템인 NeuralNet 모듈을 구현한 것이다. nltk.utils.py는 파이썬의 외장 모듈인 nltk를 사용하여 
 
 ```python
 import numpy as np
@@ -165,4 +165,26 @@ def bag_of_words(tokenized_sentence, words):
             bag[idx] = 1
 
     return bag
-  ```
+```
+  
+```python
+import torch
+import torch.nn as nn
+
+
+class NeuralNet(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super(NeuralNet, self).__init__()
+        self.l1 = nn.Linear(input_size, hidden_size) 
+        self.l2 = nn.Linear(hidden_size, hidden_size) 
+        self.l3 = nn.Linear(hidden_size, num_classes)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        out = self.l1(x)
+        out = self.relu(out)
+        out = self.l2(out)
+        out = self.relu(out)
+        out = self.l3(out)
+        return out
+```
