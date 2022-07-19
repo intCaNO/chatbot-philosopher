@@ -263,7 +263,7 @@ output_size = len(tags)
 print(input_size, output_size)
 ```
 
-다음 코드는 인공지능의 학습 과정을 위해 필요한 파라미터들이다.
+위의 코드들은 인공지능의 학습 과정을 위해 필요한 파라미터들이다.
 
 ```python
 class ChatDataset(Dataset):
@@ -273,11 +273,9 @@ class ChatDataset(Dataset):
         self.x_data = X_train
         self.y_data = y_train
 
-    # support indexing such that dataset[i] can be used to get i-th sample
     def __getitem__(self, index):
         return self.x_data[index], self.y_data[index]
 
-    # we can call len(dataset) to return the size
     def __len__(self):
         return self.n_samples
 
@@ -291,23 +289,25 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = NeuralNet(input_size, hidden_size, output_size).to(device)
 
-# Loss and optimizer
+
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+```
 
+이 부분은 학습 과정에서 생기는 오류 격차를 수치화시키고, 줄여나가기 위한 변수를 설정하는 단계이다. 코드를 보면 criterion에 학습 과정에서 생기는 엔트로피 로스 값인 CrossEntropyLoss가 담겨 있다. 또한 기본적인 데이터 트레이닝을 위한 함수들(코드에서 def로 정의된 사용자 정의 함수들)과 변수들(dataset, train_loader, device, model, criterion, optimizer)이 저장되어 있다.
+
+```python
 # Train the model
 for epoch in range(num_epochs):
     for (words, labels) in train_loader:
         words = words.to(device)
         labels = labels.to(dtype=torch.long).to(device)
         
-        # Forward pass
+
         outputs = model(words)
-        # if y would be one-hot, we must apply
-        # labels = torch.max(labels, 1)[1]
         loss = criterion(outputs, labels)
         
-        # Backward and optimize
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -326,9 +326,79 @@ data = {
 "all_words": all_words,
 "tags": tags
 }
+```
 
+위의 코드는 실제로 학습 프로그램이 동작하는 부분이다. 이 때 코드는 오차율 내에서 손실율이 0에 가깝게 수렴할 때까지 반복하며 계속해서 학습을 진행해 손실율을 줄여나간다.
+
+```python
 FILE = "data.pth"
 torch.save(data, FILE)
 
 print(f'training complete. file saved to {FILE}')
+```
+
+그리고 특정 손실율에 도달하여 학습이 종료되면 프로그램을 학습 데이터를 data.pth라는 모델 파일에 저장하고 학습을 마친다.
+여기까지 코드를 진행했다면 전체 프로그램에는 data.pth라는 훈련 데이터가 존재하게 된다. 즉, 이제 실제로 챗봇을 구동할 준비가 완료된 것이다. 그리고 다음 코드는 실제로 인공지능 커뮤니케이션 시스템을 돌아가게끔 하는 챗봇의 본체 코드인 chat.py 이다.
+```python
+import random
+import json
+
+import torch
+
+from model import NeuralNet
+from nltk_utils import bag_of_words, tokenize
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+with open('intents.json', 'r') as json_data:
+    intents = json.load(json_data)
+
+FILE = "data.pth"
+data = torch.load(FILE)
+
+input_size = data["input_size"]
+hidden_size = data["hidden_size"]
+output_size = data["output_size"]
+all_words = data['all_words']
+tags = data['tags']
+model_state = data["model_state"]
+
+model = NeuralNet(input_size, hidden_size, output_size).to(device)
+model.load_state_dict(model_state)
+model.eval()
+
+bot_name = "Supinoza"
+
+def get_response(msg):
+    sentence = tokenize(msg)
+    X = bag_of_words(sentence, all_words)
+    X = X.reshape(1, X.shape[0])
+    X = torch.from_numpy(X).to(device)
+
+    output = model(X)
+    _, predicted = torch.max(output, dim=1)
+
+    tag = tags[predicted.item()]
+
+    probs = torch.softmax(output, dim=1)
+    prob = probs[0][predicted.item()]
+    if prob.item() > 0.75:
+        for intent in intents['intents']:
+            if tag == intent["tag"]:
+                return random.choice(intent['responses'])
+    
+    return "It's not philosophical..."
+
+
+if __name__ == "__main__":
+    print("Hi! It's Supinoza, your A.I. philosopher.")
+    print("I'm impressed with German Idealism or Deutscher Idealismus.(type 'no' for exit)")
+    print("Let's have any conversation!")
+    while True:
+        sentence = input("You: ")
+        if sentence == "quit":
+            break
+
+        resp = get_response(sentence)
+        print(resp)
 ```
