@@ -402,3 +402,5 @@ if __name__ == "__main__":
         resp = get_response(sentence)
         print(resp)
 ```
+
+chat.py는 사용자에게 대화 인풋 값을 받아 변수에 저장하고, 변수에 저장한 사용자의 말을 토큰 단위로 분석해 자신이 가지고 있는 기존의 베이스 데이터인 data.pth와 비교하여 적절한 답변을 내놓는다. 다음
