@@ -119,7 +119,7 @@
 }
 ```
 
-  아래의 두 개의 코드는 각각 nltk.utils.py, 그리고 model.py이다. 이 파이썬 코드들은 사용자의 입력을 예측하고 분류하는데 필요한 nltk의 punkt 토크나이저(tokenizer) 시스템과 인공지능 커뮤니케이션 시스템의 기반이 되어줄 뉴런 시스템인 NeuralNet 모듈을 구현한 것이다. nltk.utils.py는 파이썬의 외장 모듈인 nltk를 사용하여 
+  아래의 두 개의 코드는 각각 nltk.utils.py, 그리고 model.py이다. 이 파이썬 코드들은 사용자의 입력을 예측하고 분류하는데 필요한 nltk의 punkt 토크나이저(tokenizer) 시스템과 인공지능 커뮤니케이션 시스템의 기반이 되어줄 뉴런 시스템인 NeuralNet 모듈을 구현한 것이다. nltk.utils.py는 파이썬의 외장 모듈인 nltk와 numpy를 사용하여 위에서 기술한 데이터베이스인 intents.json 파일에서 인풋 데이터를 가져와 단어들을 어근 단위로 청크화 시켜 일종의 스템(stem) 형태의 토큰을 생성한다. 이 때, 중복된 스템을 걸러내기 위한 코드를 추가해 데이터의 중복을 방지하였다. 그리고 model.py는 전체적인 시스템이 돌아가기 위한 가자 기본적인 베이스인 NeuralNet을 불러오고 인공지느 커뮤니케이셔 모델에 공간을 부여하느 작업을 수행한다.
 
 ```python
 import numpy as np
