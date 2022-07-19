@@ -119,7 +119,7 @@
 }
 ```
 
-  아래의 두 개의 코드는 각각 nltk.utils.py, 그리고 model.py이다. 이 파이썬 코드들은 사용자의 입력을 예측하고 분류하는데 필요한 nltk의 punkt 토크나이저(tokenizer) 시스템과 인공지능 커뮤니케이션 시스템의 기반이 되어줄 뉴런 시스템인 NeuralNet 모듈을 구현한 것이다. nltk.utils.py는 파이썬의 외장 모듈인 nltk와 numpy를 사용하여 위에서 기술한 데이터베이스인 intents.json 파일에서 인풋 데이터를 가져와 단어들을 어근 단위로 청크화 시켜 일종의 스템(stem) 형태의 토큰을 생성한다. 이 때, 중복된 스템을 걸러내기 위한 코드를 추가해 데이터의 중복을 방지하였다. 그리고 model.py는 전체적인 시스템이 돌아가기 위한 가자 기본적인 베이스인 NeuralNet을 불러오고 인공지느 커뮤니케이셔 모델에 공간을 부여하느 작업을 수행한다.
+  아래의 두 개의 코드는 각각 nltk.utils.py, 그리고 model.py이다. 이 파이썬 코드들은 사용자의 입력을 예측하고 분류하는데 필요한 nltk의 punkt 토크나이저(tokenizer) 시스템과 인공지능 커뮤니케이션 시스템의 기반이 되어줄 뉴런 시스템인 NeuralNet 모듈을 구현한 것이다. nltk.utils.py는 파이썬의 외장 모듈인 nltk와 numpy를 사용하여 위에서 기술한 데이터베이스인 intents.json 파일에서 인풋 데이터를 가져와 단어들을 어근 단위로 청크화 시켜 일종의 스템(stem) 형태의 토큰을 생성한다. 이 때, 중복된 스템을 걸러내기 위한 코드를 추가해 데이터의 중복을 방지하였다. 그리고 model.py는 전체적인 시스템이 돌아가기 위한 가장 기본적인 베이스인 NeuralNet을 불러오고 인공지능 커뮤니케이션 모델에 공간을 할당하는 작업을 수행한다.
 
 ```python
 import numpy as np
@@ -187,4 +187,148 @@ class NeuralNet(nn.Module):
         out = self.relu(out)
         out = self.l3(out)
         return out
+```
+
+다음은 전체 프로그램의 핵심 코드 중 하나인 인공지능에게 데이터베이스를 학습시키는 프로그램이다. 상술했던 프로그램들은 전체적인 구현을 위해서 필요한 사전 작업 같은 것이였다면, 본 train.py르 포함한 후술할 코드 브렌치들은 실질적으로 챗봇이 돌아가기 위한 작업을 수행하는 프로그램 코드들이다. 한편 train.py 만큼은 전반적인 시스템의 핵심이 되는 코드이기에 조금 더 세부적으로, 코드별로 뜯어서 진행과정과 프로그램의 논리 흐름을 설명하고자 한다.
+
+```python
+import numpy as np
+import random
+import json
+
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+
+from nltk_utils import bag_of_words, tokenize, stem
+from model import NeuralNet
+
+with open('intents.json', 'r') as f:
+    intents = json.load(f)
+```
+
+여기까지의 구문은 train.py를 구동하기 위해 전에 프로그래밍 해놓은 베이스 파일들을 현재 프로그램 안에서 사용할 수 있게 import 명령어로 불러오는 작업을 수행한다. 이 때, array들을 처리할 수 있게 해주는 모듈인 numpy, 챗봇이 대답을 하는 과정에서 데이터베이스에서 랜덤한 하나의 대답을 불러오는데 사용될 random 모듈, 데이터베이스와의 연결을 위한 json 모듈, 그리고 인공지능의 연산시스템의 기반이 되는 각종 pytorch 모듈과 NeuralNet을 불러왔다. 코드 줄에서 'with open('intents.json','r') as f: 와 따라오는 블록 안의 intents = json.load(f)는 위에서 제작했던 데이터베이스에서 직접 정보를 가져오는 역할을 수행한다.
+
+```python
+all_words = []
+tags = []
+xy = []
+# loop through each sentence in our intents patterns
+for intent in intents['intents']:
+    tag = intent['tag']
+    # add to tag list
+    tags.append(tag)
+    for pattern in intent['patterns']:
+        # tokenize each word in the sentence
+        w = tokenize(pattern)
+        # add to our words list
+        all_words.extend(w)
+        # add to xy pair
+        xy.append((w, tag))
+
+ignore_words = ['?', '.', '!']
+all_words = [stem(w) for w in all_words if w not in ignore_words]
+# remove duplicates and sort
+all_words = sorted(set(all_words))
+tags = sorted(set(tags))
+
+print(len(xy), "patterns")
+print(len(tags), "tags:", tags)
+print(len(all_words), "unique stemmed words:", all_words)
+```
+
+이 코드들은 입력받은 json 파일의 데이터베이스에서 스템(stem)을 생성하는 역할을 담당한다. 이는 stem을 생성하기 위한 작업을 수행하는 코드들(기호나 특수문자들을 없애는 작업, 반복되는 stem들을 제거하고 정렬하여 보여주는 작업)을 포함한다.
+
+```python
+X_train = []
+y_train = []
+for (pattern_sentence, tag) in xy:
+    bag = bag_of_words(pattern_sentence, all_words)
+    X_train.append(bag)
+    label = tags.index(tag)
+    y_train.append(label)
+
+X_train = np.array(X_train)
+y_train = np.array(y_train)
+```
+다음 코드들은 훈련 데이터를 만드는 작업을 수행한다. X열과 Y열의 두가지의 집합체를 이용하고 이들은 앞에서 import 해온 numpy를 이용해 계산하고 학습되어진다. 이떄, X열에는 json 데이터베이스로부터 만들어낸 pattern 문장들이, Y열에는 후술할 Pytorch 프로그램을 이용한 훈련 과정에서 라벨링 된 훈련 로스율 데이터가 변수로 저장된다.
+
+```python
+num_epochs = 1000
+batch_size = 8
+learning_rate = 0.001
+input_size = len(X_train[0])
+hidden_size = 8
+output_size = len(tags)
+print(input_size, output_size)
+```
+
+다음 코드는 인공지능의 학습 과정을 위해 필요한 파라미터들이다.
+
+```python
+class ChatDataset(Dataset):
+
+    def __init__(self):
+        self.n_samples = len(X_train)
+        self.x_data = X_train
+        self.y_data = y_train
+
+    # support indexing such that dataset[i] can be used to get i-th sample
+    def __getitem__(self, index):
+        return self.x_data[index], self.y_data[index]
+
+    # we can call len(dataset) to return the size
+    def __len__(self):
+        return self.n_samples
+
+dataset = ChatDataset()
+train_loader = DataLoader(dataset=dataset,
+                          batch_size=batch_size,
+                          shuffle=True,
+                          num_workers=0)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+model = NeuralNet(input_size, hidden_size, output_size).to(device)
+
+# Loss and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+# Train the model
+for epoch in range(num_epochs):
+    for (words, labels) in train_loader:
+        words = words.to(device)
+        labels = labels.to(dtype=torch.long).to(device)
+        
+        # Forward pass
+        outputs = model(words)
+        # if y would be one-hot, we must apply
+        # labels = torch.max(labels, 1)[1]
+        loss = criterion(outputs, labels)
+        
+        # Backward and optimize
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+    if (epoch+1) % 100 == 0:
+        print (f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+
+print(f'final loss: {loss.item():.4f}')
+
+data = {
+"model_state": model.state_dict(),
+"input_size": input_size,
+"hidden_size": hidden_size,
+"output_size": output_size,
+"all_words": all_words,
+"tags": tags
+}
+
+FILE = "data.pth"
+torch.save(data, FILE)
+
+print(f'training complete. file saved to {FILE}')
 ```
