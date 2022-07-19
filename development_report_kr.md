@@ -112,35 +112,57 @@
       ],
       "responses": [
         "Hegel, Georg Wilhelm Friedrich Hegel. Great German philosopher whose philosophical universe is extraordinary tremendous. Welp, I like his view on the history though. Have you ever heard something called 'absoluter geist'? The state of complete equility between subject and object... I think humans are going to reach there once!",
-        "Hegel, Georg Wilhelm Friedrich Hegel. Großer deutscher Philosoph, dessen philosophisches Universum außerordentlich gewaltig ist. Welp, ich mag aber seine Sicht auf die Geschichte. Haben Sie jemals etwas gehört, das „absoluter Geist“ genannt wird? Der Zustand der völligen Gleichheit zwischen Subjekt und Objekt ... Ich denke, die Menschen werden ihn einmal erreichen!"
-      ]
-    },
-    {
-      "tag": "philosophy_fichte",
-      "patterns": [
-        "Can you tell me about Fichte?",
-        "Could you tell me more about Fichte?",
-        "Who is Fichte?",
-        "Can you explain me about Fichte?",
-        "What do you think about Fichte?"
-      ],
-      "responses": [
-        "Why did the hipster burn his mouth? He drank the coffee before it was cool."
-      ]
-    },
-    {
-      "tag": "philosophy_schelling",
-      "patterns": [
-        "Can you tell me about Schelling?",
-        "Could you tell me more about Schelling?",
-        "Who is Schelling?",
-        "Can you explain me about Schelling?",
-        "What do you think about Schelling?"
-      ],
-      "responses": [
-        "Schelling is..."
+        "Hegel, Georg Wilhelm Friedrich Hegel. Großer deutscher Philosoph, dessen philosophisches Universum außerordentlich gewaltig ist. Welp, ich mag aber seine Sicht auf die Geschichte. Haben Sie jemals etwas gehört, das „absoluter Geist“ genannt wird? Der Zustand der völligen Gleichheit zwischen Subjekt und Objekt ... Ich denke, die Menschen werden ihn einmal"
       ]
     }
   ]
 }
 ```
+
+
+
+```python
+import numpy as np
+import nltk
+nltk.download('punkt')
+from nltk.stem.porter import PorterStemmer
+stemmer = PorterStemmer()
+
+def tokenize(sentence):
+    """
+    split sentence into array of words/tokens
+    a token can be a word or punctuation character, or number
+    """
+    return nltk.word_tokenize(sentence)
+
+
+def stem(word):
+    """
+    stemming = find the root form of the word
+    examples:
+    words = ["organize", "organizes", "organizing"]
+    words = [stem(w) for w in words]
+    -> ["organ", "organ", "organ"]
+    """
+    return stemmer.stem(word.lower())
+
+
+def bag_of_words(tokenized_sentence, words):
+    """
+    return bag of words array:
+    1 for each known word that exists in the sentence, 0 otherwise
+    example:
+    sentence = ["hello", "how", "are", "you"]
+    words = ["hi", "hello", "I", "you", "bye", "thank", "cool"]
+    bog   = [  0 ,    1 ,    0 ,   1 ,    0 ,    0 ,      0]
+    """
+    # stem each word
+    sentence_words = [stem(word) for word in tokenized_sentence]
+    # initialize bag with 0 for each word
+    bag = np.zeros(len(words), dtype=np.float32)
+    for idx, w in enumerate(words):
+        if w in sentence_words: 
+            bag[idx] = 1
+
+    return bag
+  ```
